@@ -3,1022 +3,680 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Книги</title>
+    <title>Моя Медиатека</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/epub.js/0.3.88/epub.min.js"></script>
+    <link rel="manifest" href="manifest.json">
     <style>
-        :root {
-            --bg-main: #0F0F11;
-            --bg-surface: #17171C;
-            --bg-surface-elevated: #22222A;
-            --text-primary: #FFFFFF;
-            --text-secondary: #8E8E93;
-            --accent: #FF4A22; /* Фирменный коралловый цвет */
-            --accent-tap: #E03D1A;
-            --font-stack: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            --transition-speed: 0.25s;
-        }
-
-        [data-theme="light"] {
-            --bg-main: #F2F2F7;
-            --bg-surface: #FFFFFF;
-            --bg-surface-elevated: #E5E5EA;
-            --text-primary: #1C1C1E;
-            --text-secondary: #8E8E93;
-        }
-
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-            -webkit-tap-highlight-color: transparent;
-        }
-
         body {
-            font-family: var(--font-stack);
-            background-color: var(--bg-main);
-            color: var(--text-primary);
-            transition: background-color var(--transition-speed), color var(--transition-speed);
-            overflow-x: hidden;
-            -webkit-user-select: none;
-            user-select: none;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            -webkit-tap-highlight-color: transparent;
+            transition: background-color 0.3s, color 0.3s;
+        }
+        
+        body.theme-dark {
+            background-color: #0d0d0f;
+            color: #f3f4f6;
+        }
+        body.theme-light {
+            background-color: #f6f6f9;
+            color: #111827;
         }
 
-        .view {
-            display: none;
-            min-height: 100vh;
-            padding: 16px;
-            position: relative;
+        .reader-container::-webkit-scrollbar,
+        .tracks-container::-webkit-scrollbar {
+            width: 4px;
+        }
+        .reader-container::-webkit-scrollbar-thumb,
+        .tracks-container::-webkit-scrollbar-thumb {
+            background: rgba(156, 163, 175, 0.2);
+            border-radius: 10px;
         }
 
-        .view.active {
-            display: flex;
-            flex-direction: column;
-        }
-
-        /* Шапка приложения */
-        .header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 12px 4px;
-            margin-bottom: 16px;
-        }
-
-        .header h1 {
-            font-size: 26px;
-            font-weight: 700;
-            letter-spacing: -0.5px;
-        }
-
-        .icon-btn {
-            background: none;
-            border: none;
-            color: var(--text-primary);
-            font-size: 24px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            width: 44px;
-            height: 44px;
-            border-radius: 50%;
-            transition: background 0.2s;
-        }
-
-        .icon-btn:active {
-            background: var(--bg-surface-elevated);
-        }
-
-        /* Полка книг (Сетка) */
-        .books-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(105px, 1fr));
-            gap: 24px 16px;
-        }
-
-        .book-card {
-            display: flex;
-            flex-direction: column;
-            cursor: pointer;
-        }
-
-        .book-cover-wrapper {
-            position: relative;
-            width: 100%;
-            padding-top: 145%;
-            border-radius: 12px;
-            overflow: hidden;
-            background-color: var(--bg-surface);
-            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
-            transition: transform 0.2s;
-        }
-
-        .book-card:active .book-cover-wrapper {
-            transform: scale(0.96);
-        }
-
-        .book-cover-wrapper img {
+        .blur-bg {
             position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-        }
-
-        .no-cover {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 32px;
-            background: linear-gradient(135deg, #2C2C35, #17171C);
-        }
-
-        .book-title {
-            font-size: 14px;
-            font-weight: 600;
-            line-height: 1.3;
-            margin-top: 8px;
-            display: -webkit-box;
-            -webkit-line-clamp: 2;
-            -webkit-box-orient: vertical;
-            overflow: hidden;
-            height: 36px;
-        }
-
-        .book-author {
-            font-size: 12px;
-            color: var(--text-secondary);
-            margin-top: 2px;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-
-        /* Экран карточки книги с размытием */
-        #book-view {
-            padding: 0;
-        }
-
-        .blur-background {
-            position: fixed;
             top: 0;
             left: 0;
             right: 0;
-            bottom: 0;
-            z-index: -1;
+            height: 100vh;
             background-size: cover;
             background-position: center;
-            filter: blur(35px) brightness(0.35);
+            z-index: 0;
             transform: scale(1.15);
+            pointer-events: none;
+            transition: opacity 0.6s ease-in-out;
+        }
+        body.theme-dark .blur-bg {
+            filter: blur(50px) brightness(0.25);
+        }
+        body.theme-light .blur-bg {
+            filter: blur(50px) brightness(0.9);
+            opacity: 0.25;
+        }
+        .content-overlay {
+            position: relative;
+            z-index: 10;
         }
 
-        [data-theme="light"] .blur-background {
-            filter: blur(35px) brightness(0.9);
-        }
-
-        .detail-content {
-            padding: 20px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            text-align: center;
-            flex-grow: 1;
-            background: linear-gradient(to bottom, rgba(15,15,17,0.2) 0%, var(--bg-main) 65%);
-            min-height: 100vh;
-        }
-
-        .detail-cover {
-            width: 165px;
-            height: 240px;
-            border-radius: 14px;
-            object-fit: cover;
-            box-shadow: 0 16px 32px rgba(0,0,0,0.5);
-            margin-bottom: 24px;
-            margin-top: 20px;
-        }
-
-        .detail-title {
-            font-size: 22px;
-            font-weight: 700;
-            margin-bottom: 6px;
-            padding: 0 10px;
-        }
-
-        .detail-author {
-            font-size: 15px;
-            color: var(--text-secondary);
-            margin-bottom: 24px;
-        }
-
-        .detail-description {
-            font-size: 14px;
-            line-height: 1.5;
-            color: var(--text-primary);
-            text-align: left;
-            background: rgba(255,255,255,0.06);
-            padding: 16px;
-            border-radius: 14px;
-            margin-bottom: 32px;
-            width: 100%;
-            max-height: 160px;
-            overflow-y: auto;
-            backdrop-filter: blur(10px);
-        }
-
-        [data-theme="light"] .detail-description {
-            background: rgba(0,0,0,0.04);
-        }
-
-        .action-buttons {
-            display: flex;
-            gap: 12px;
-            width: 100%;
-            margin-top: auto;
-            padding-bottom: 24px;
-        }
-
-        .btn-action {
-            flex: 1;
-            border: none;
-            padding: 16px;
-            border-radius: 14px;
-            font-size: 16px;
-            font-weight: 600;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-            transition: background 0.2s, transform 0.1s;
-        }
-
-        .btn-action:active {
-            transform: scale(0.98);
-        }
-
-        .btn-listen {
-            background-color: var(--accent);
-            color: #FFFFFF;
-        }
-
-        .btn-listen:active {
-            background-color: var(--accent-tap);
-        }
-
-        .btn-read {
-            background-color: var(--bg-surface-elevated);
-            color: var(--text-primary);
-        }
-
-        /* Выделенный Аудиоплеер */
-        .player-container {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            text-align: center;
-            justify-content: space-between;
-            height: calc(100vh - 80px);
-            width: 100%;
-        }
-
-        .player-cover {
-            width: 240px;
-            height: 240px;
-            border-radius: 20px;
-            object-fit: cover;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.4);
-            margin: auto 0;
-        }
-
-        .player-info {
-            width: 100%;
-            margin-bottom: 28px;
-        }
-
-        .player-track-title {
-            font-size: 18px;
-            font-weight: 700;
-            margin-bottom: 4px;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            padding: 0 10px;
-        }
-
-        .player-book-title {
-            font-size: 14px;
-            color: var(--text-secondary);
-        }
-
-        .player-controls-wrapper {
-            width: 100%;
-        }
-
-        .progress-container {
-            width: 100%;
-            margin-bottom: 24px;
-        }
-
-        .slider {
-            -webkit-appearance: none;
-            appearance: none;
-            width: 100%;
-            height: 4px;
-            border-radius: 2px;
-            background: var(--bg-surface-elevated);
-            outline: none;
-        }
-
-        .slider::-webkit-slider-thumb {
-            -webkit-appearance: none;
-            appearance: none;
-            width: 14px;
-            height: 14px;
-            border-radius: 50%;
-            background: var(--accent);
-            cursor: pointer;
+        /* Плавный ползунок */
+        input[type="range"]::-webkit-slider-thumb {
             transition: transform 0.1s;
         }
-
-        .slider::-webkit-slider-thumb:active {
+        input[type="range"]:active::-webkit-slider-thumb {
             transform: scale(1.3);
-        }
-
-        .time-info {
-            display: flex;
-            justify-content: space-between;
-            font-size: 12px;
-            color: var(--text-secondary);
-            margin-top: 8px;
-        }
-
-        .control-buttons {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            width: 100%;
-            padding: 0 8px;
-        }
-
-        .btn-control {
-            background: none;
-            border: none;
-            color: var(--text-primary);
-            font-size: 22px;
-            cursor: pointer;
-            padding: 12px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border-radius: 50%;
-        }
-
-        .btn-control:active {
-            background: var(--bg-surface-elevated);
-        }
-
-        .btn-control.main-play {
-            font-size: 52px;
-            color: var(--accent);
-            padding: 0;
-        }
-
-        .btn-control.main-play:active {
-            background: none;
-            transform: scale(0.95);
-        }
-
-        .speed-badge {
-            font-size: 13px;
-            font-weight: 600;
-            background-color: var(--bg-surface-elevated);
-            padding: 6px 14px;
-            border-radius: 20px;
-            border: none;
-            color: var(--text-primary);
-            cursor: pointer;
-            margin-top: 20px;
-        }
-
-        /* Читалка ePub */
-        #reader-view {
-            padding: 0;
-            background: var(--bg-surface);
-        }
-
-        .reader-header {
-            display: flex;
-            align-items: center;
-            padding: 8px 16px;
-            background: var(--bg-main);
-            border-bottom: 1px solid var(--bg-surface-elevated);
-            height: 56px;
-        }
-
-        #reader-container {
-            flex-grow: 1;
-            width: 100%;
-            height: calc(100vh - 112px);
-            background-color: var(--bg-surface);
-        }
-
-        .reader-footer {
-            display: flex;
-            justify-content: space-between;
-            padding: 12px 16px;
-            background: var(--bg-main);
-            border-top: 1px solid var(--bg-surface-elevated);
-            height: 56px;
-        }
-
-        /* Настройки и Авторизация */
-        .settings-list {
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-        }
-
-        .settings-item {
-            background-color: var(--bg-surface);
-            padding: 16px;
-            border-radius: 14px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .btn-settings-action {
-            width: 100%;
-            padding: 16px;
-            border-radius: 14px;
-            border: none;
-            font-size: 15px;
-            font-weight: 600;
-            cursor: pointer;
-            text-align: left;
-        }
-
-        .btn-danger {
-            background-color: rgba(255, 74, 34, 0.15);
-            color: #FF4A22;
-        }
-
-        .auth-container {
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            height: 80vh;
-            text-align: center;
-        }
-
-        .auth-input {
-            width: 100%;
-            max-width: 320px;
-            padding: 16px;
-            border-radius: 14px;
-            border: 1px solid var(--bg-surface-elevated);
-            background-color: var(--bg-surface);
-            color: var(--text-primary);
-            font-size: 16px;
-            margin-bottom: 16px;
-            outline: none;
-            text-align: center;
-        }
-
-        /* Глобальный Индикатор Загрузки */
-        .loader {
-            display: none;
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            z-index: 1000;
-            font-size: 14px;
-            font-weight: 500;
-            background: rgba(0, 0, 0, 0.85);
-            padding: 14px 28px;
-            border-radius: 24px;
-            color: #FFFFFF;
-            backdrop-filter: blur(4px);
         }
     </style>
 </head>
-<body data-theme="dark">
+<body class="min-h-screen flex flex-col max-w-md mx-auto relative shadow-2xl overflow-x-hidden theme-dark">
 
-    <div class="loader" id="global-loader">Загрузка...</div>
-
-    <div id="auth-view" class="view">
-        <div class="auth-container">
-            <h2 style="margin-bottom: 12px; font-weight: 700;">Яндекс Книги</h2>
-            <p style="color: var(--text-secondary); margin-bottom: 24px; font-size: 14px;">Введите OAuth-токен вашего Яндекс Диска</p>
-            <input type="password" id="token-input" class="auth-input" placeholder="Токен доступа">
-            <button class="btn-action btn-listen" style="max-width: 320px;" onclick="saveToken()">Войти</button>
+    <div id="screen-auth" class="flex-1 flex flex-col justify-center px-8 hidden">
+        <div class="text-center mb-10">
+            <div class="text-5xl mb-4 animate-bounce">📚</div>
+            <h1 class="text-3xl font-extrabold tracking-tight text-amber-500">Медиатека</h1>
+            <p class="text-zinc-400 text-xs mt-3 px-4 leading-relaxed">Введите OAuth-токен вашего Яндекс Диска для синхронизации персональной библиотеки книг</p>
+        </div>
+        <div class="space-y-4 bg-zinc-900/40 p-6 rounded-3xl border border-white/5 backdrop-blur-xl">
+            <input type="password" id="input-token" placeholder="Укажите ваш OAuth токен..." 
+                   class="w-full px-4 py-3.5 bg-zinc-950/60 border border-white/5 rounded-2xl focus:outline-none focus:border-amber-500 text-white placeholder-zinc-600 text-center text-sm tracking-wide transition-all">
+            <button onclick="saveToken()" 
+                    class="w-full bg-amber-500 text-zinc-950 font-bold py-3.5 rounded-2xl hover:bg-amber-400 active:scale-[0.97] shadow-xl shadow-amber-500/10 transition-all text-sm">
+                Открыть хранилище
+            </button>
         </div>
     </div>
 
-    <div id="main-view" class="view">
-        <div class="header">
-            <h1>Книги</h1>
-            <button class="icon-btn" onclick="switchView('settings-view')">⚙️</button>
+    <div id="screen-catalog" class="flex-1 flex flex-col hidden pb-28">
+        <header class="px-6 py-4 flex justify-between items-center bg-transparent border-b border-white/5 sticky top-0 backdrop-blur-md z-50">
+            <div>
+                <h2 class="text-2xl font-black tracking-tight bg-gradient-to-r from-amber-400 to-amber-600 bg-clip-text text-transparent">Полка</h2>
+            </div>
+            <button onclick="switchScreen('screen-settings')" class="p-2.5 bg-zinc-500/10 rounded-xl text-zinc-400 hover:text-amber-500 hover:bg-zinc-500/20 active:scale-90 transition-all">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                </svg>
+            </button>
+        </header>
+        
+        <div id="catalog-loading" class="flex-1 flex flex-col justify-center items-center py-32 text-zinc-500 hidden">
+            <div class="animate-spin rounded-full h-7 w-7 border-2 border-amber-500 border-t-transparent mb-4"></div>
+            <p class="text-xs tracking-wide">Синхронизация с Яндекс Диском...</p>
         </div>
-        <div class="books-grid" id="books-grid"></div>
+
+        <div id="catalog-empty" class="flex-1 flex flex-col justify-center items-center py-32 px-10 text-center hidden">
+            <div class="text-4xl mb-3">📁</div>
+            <p class="text-zinc-400 font-semibold text-sm">Каталог не найден</p>
+            <p class="text-zinc-500 text-[11px] mt-2 leading-relaxed bg-zinc-500/5 p-3 rounded-xl border border-white/5">Убедитесь, что создали на Диске директорию:<br><span class="font-mono text-amber-500 text-[10px]">01. Медиатека/Книги/</span></p>
+        </div>
+
+        <div id="books-grid" class="grid grid-cols-2 gap-x-4 gap-y-6 p-6"></div>
     </div>
 
-    <div id="settings-view" class="view">
-        <div class="header">
-            <button class="icon-btn" onclick="switchView('main-view')">←</button>
-            <h1 style="font-size: 20px; flex-grow: 1; text-align: center; margin-right: 44px;">Настройки</h1>
-        </div>
-        <div class="settings-list">
-            <div class="settings-item">
-                <span>Темная тема</span>
-                <input type="checkbox" id="theme-toggle" style="width: 20px; height: 20px; accent-color: var(--accent);" checked onchange="toggleTheme()">
+    <div id="screen-settings" class="flex-1 flex flex-col hidden p-6">
+        <header class="flex items-center space-x-4 mb-8">
+            <button onclick="switchScreen('screen-catalog')" class="p-2.5 bg-zinc-500/10 rounded-xl hover:bg-zinc-500/20 active:scale-95 transition-all text-zinc-400">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+            </button>
+            <h2 class="text-xl font-black">Настройки</h2>
+        </header>
+
+        <div class="space-y-5 flex-1">
+            <div class="bg-zinc-500/5 border border-white/5 p-5 rounded-2xl backdrop-blur-md">
+                <label class="text-[11px] font-bold uppercase tracking-wider text-zinc-400 block mb-3">Визуальный интерфейс</label>
+                <div class="grid grid-cols-2 gap-1.5 p-1 bg-zinc-950/60 rounded-xl border border-white/5">
+                    <button id="theme-btn-dark" onclick="setAppTheme('dark')" class="py-2 rounded-lg text-xs font-semibold transition-all">Тёмная</button>
+                    <button id="theme-btn-light" onclick="setAppTheme('light')" class="py-2 rounded-lg text-xs font-semibold transition-all">Светлая</button>
+                </div>
             </div>
-            <button class="btn-settings-action btn-read" onclick="clearAppCache()">🔄 Обновить полку (Сбросить кэш)</button>
-            <button class="btn-settings-action btn-danger" onclick="logout()">🚪 Выйти из аккаунта</button>
+
+            <div class="bg-zinc-500/5 border border-white/5 p-5 rounded-2xl backdrop-blur-md">
+                <label class="text-[11px] font-bold uppercase tracking-wider text-zinc-400 block mb-2">Локальный Кэш</label>
+                <p class="text-[11px] text-zinc-500 mb-4 leading-relaxed">Обложки и метаданные сохраняются локально для моментального рендеринга страниц при повторных открытиях.</p>
+                <button onclick="clearBookCache()" class="w-full bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20 active:scale-[0.98] py-2.5 rounded-xl text-xs font-bold transition-all">
+                    🗑️ Сбросить сохраненный кэш книг
+                </button>
+            </div>
         </div>
+
+        <button onclick="logout()" class="w-full bg-zinc-500/10 hover:bg-red-500/10 border border-white/5 hover:border-red-500/20 text-zinc-400 hover:text-red-400 font-bold py-3.5 rounded-2xl text-xs tracking-wide transition-all mt-auto active:scale-[0.98]">
+            Выйти из учетной записи
+        </button>
     </div>
 
-    <div id="book-view" class="view">
-        <div class="blur-background" id="detail-blur-bg"></div>
-        <div class="detail-content">
-            <div class="detail-header">
-                <button class="icon-btn" onclick="switchView('main-view')">←</button>
-            </div>
-            <img class="detail-cover" id="detail-cover-img" src="" alt="">
-            <div class="detail-title" id="detail-title-text">Название книги</div>
-            <div class="detail-author" id="detail-author-text">Автор</div>
-            <div class="detail-description" id="detail-desc-text">Описание загружается...</div>
-            
-            <div class="action-buttons">
-                <button class="btn-action btn-listen" onclick="routeToAudio()"><span style="font-size: 18px;">🎧</span> Слушать</button>
-                <button class="btn-action btn-read" onclick="routeToReader()"><span style="font-size: 18px;">📖</span> Читать</button>
-            </div>
-        </div>
-    </div>
+    <div id="screen-book" class="flex-1 flex flex-col hidden relative min-h-screen pb-36">
+        <div id="book-blur-bg" class="blur-bg"></div>
+        <div class="content-overlay flex-1 flex flex-col">
+            <header class="px-5 py-4 flex items-center justify-between">
+                <button onclick="switchScreen('screen-catalog')" class="p-2.5 bg-black/20 text-white rounded-xl hover:bg-black/40 backdrop-blur-md transition-all active:scale-90">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+                </button>
+                <span class="text-xs font-bold tracking-wide bg-black/20 text-zinc-300 px-3 py-1.5 rounded-full border border-white/5 backdrop-blur-md">Карточка книги</span>
+                <div class="w-10"></div>
+            </header>
 
-    <div id="player-view" class="view">
-        <div class="header" style="margin-bottom: 0;">
-            <button class="icon-btn" onclick="switchView('book-view')">←</button>
-            <h1 style="font-size: 18px; flex-grow: 1; text-align: center; margin-right: 44px;">Плеер</h1>
-        </div>
-        <div class="player-container">
-            <img class="player-cover" id="player-cover-img" src="" alt="">
-            <div class="player-info">
-                <div class="player-track-title" id="player-track-title">Название главы</div>
-                <div class="player-book-title" id="player-book-title">Название книги</div>
+            <div class="flex flex-col items-center px-6 pt-4 text-center">
+                <div class="relative group shadow-2xl rounded-2xl mb-5 overflow-hidden border border-white/10 w-40 h-56 bg-zinc-900">
+                    <img id="book-cover" src="" alt="Обложка" class="w-full h-full object-cover">
+                    <div class="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent"></div>
+                </div>
+                <h2 id="book-title" class="text-xl font-black leading-tight px-4 tracking-tight">Название книги</h2>
+                <p id="book-author" class="text-amber-500 text-xs font-bold mt-1.5 tracking-wide uppercase">Автор книги</p>
+
+                <div class="flex bg-black/20 border border-white/5 p-1 rounded-full my-6 w-full max-w-[240px] backdrop-blur-md">
+                    <button id="tab-read" onclick="switchBookMode('read')" class="flex-1 py-2 rounded-full text-xs font-bold transition-all">📖 Текст</button>
+                    <button id="tab-listen" onclick="switchBookMode('listen')" class="flex-1 py-2 rounded-full text-xs font-bold transition-all">🎧 Аудио</button>
+                </div>
             </div>
-            <div class="player-controls-wrapper">
-                <div class="progress-container">
-                    <input type="range" class="slider" id="player-slider" value="0" min="0" max="100" oninput="seekAudio(this.value)">
-                    <div class="time-info">
-                        <span id="player-current-time">0:00</span>
-                        <span id="player-total-time">0:00</span>
+
+            <div class="flex-1 px-6 pb-6">
+                <div id="mode-reader" class="bg-zinc-500/5 border border-white/5 rounded-2xl p-4 min-h-[240px] max-h-[340px] overflow-y-auto text-sm leading-relaxed text-left reader-container backdrop-blur-md flex flex-col justify-between">
+                    <div id="reader-content" class="whitespace-pre-line text-zinc-300 flex-grow min-h-[160px]">Загрузка контента...</div>
+                    <div id="epub-controls" class="mt-4 pt-2 border-t border-white/5 flex justify-between hidden">
+                        <button onclick="window.currentRendition?.prev()" class="px-3 py-1.5 bg-white/5 hover:bg-white/10 active:scale-95 transition-all text-xs rounded-lg font-bold text-zinc-300">◀ Назад</button>
+                        <button onclick="window.currentRendition?.next()" class="px-3 py-1.5 bg-amber-500 text-zinc-950 active:scale-95 transition-all text-xs rounded-lg font-bold">Вперед ▶</button>
                     </div>
                 </div>
-                <div class="control-buttons">
-                    <button class="btn-control" onclick="playPreviousTrack()">⏮</button>
-                    <button class="btn-control" onclick="rewindAudio(-15)">-15с</button>
-                    <button class="btn-control main-play" id="player-play-btn" onclick="togglePlay()">▶</button>
-                    <button class="btn-control" onclick="rewindAudio(30)">+30с</button>
-                    <button class="btn-control" onclick="playNextTrack()">⏭</button>
+                
+                <div id="mode-player" class="space-y-2 hidden">
+                    <div id="tracks-list" class="space-y-2 max-h-[340px] overflow-y-auto pr-1 tracks-container"></div>
                 </div>
-                <button class="speed-badge" id="player-speed-btn" onclick="cyclePlaybackSpeed()">1.0x</button>
             </div>
         </div>
     </div>
 
-    <div id="reader-view" class="view">
-        <div class="reader-header">
-            <button class="icon-btn" onclick="switchView('book-view')">←</button>
-            <h1 style="font-size: 18px; flex-grow: 1; text-align: center; margin-right: 44px;" id="reader-book-title">Читалка</h1>
+    <div id="mini-player" class="fixed bottom-4 left-4 right-4 max-w-[calc(448px-32px)] mx-auto bg-zinc-950/90 backdrop-blur-xl border border-white/10 p-3.5 flex flex-col space-y-2.5 z-50 rounded-2xl shadow-2xl transform translate-y-[150%] transition-transform duration-500 ease-out">
+        <div class="flex items-center space-x-2 text-[9px] font-mono font-semibold text-zinc-500">
+            <span id="time-current">00:00</span>
+            <input type="range" id="player-progress" min="0" max="100" value="0" step="0.1" class="flex-1 h-1 bg-zinc-800 rounded-lg appearance-none cursor-pointer accent-amber-500 focus:outline-none">
+            <span id="time-total">00:00</span>
         </div>
-        <div id="reader-container"></div>
-        <div class="reader-footer">
-            <button class="btn-action btn-read" style="padding: 10px;" onclick="window.currentRendition?.prev()">◀ Назад</button>
-            <button class="btn-action btn-read" style="padding: 10px;" onclick="window.currentRendition?.next()">Вперед ▶</button>
+        <div class="flex items-center justify-between">
+            <div class="flex items-center space-x-3 truncate max-w-[48%]">
+                <img id="mini-player-cover" src="" class="w-10 h-10 object-cover rounded-xl bg-zinc-800 flex-shrink-0 border border-white/5 shadow">
+                <div class="truncate">
+                    <div id="mini-player-title" class="text-xs font-bold truncate text-white">Название главы</div>
+                    <div id="mini-player-book" class="text-[10px] text-zinc-400 font-medium truncate mt-0.5">Книга</div>
+                </div>
+            </div>
+            <div class="flex items-center space-x-2.5">
+                <button id="player-speed-btn" onclick="cyclePlaybackSpeed()" class="text-[10px] font-bold px-2 py-2 text-zinc-400 bg-white/5 border border-white/5 rounded-xl hover:text-white transition-all">1.0x</button>
+                <button onclick="seekRelative(-15)" class="p-2 text-zinc-400 hover:text-white active:scale-75 transition-all bg-white/5 rounded-xl border border-white/5">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12.066 11.2a1 1 0 000 1.6l5.334 4A1 1 0 0019 16V8a1 1 0 00-1.6-.8l-5.334 4zM4.066 11.2a1 1 0 000 1.6l5.334 4A1 1 0 0011 16V8a1 1 0 00-1.6-.8l-5.334 4z"/></svg>
+                </button>
+                <button onclick="togglePlay()" id="btn-play" class="p-3 bg-amber-500 text-zinc-950 rounded-xl hover:bg-amber-400 active:scale-90 transition-all shadow-md shadow-amber-500/10">
+                    <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24" id="svg-play-icon"><path d="M8 5v14l11-7z"/></svg>
+                </button>
+                <button onclick="seekRelative(15)" class="p-2 text-zinc-400 hover:text-white active:scale-75 transition-all bg-white/5 rounded-xl border border-white/5">
+                    <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M4 18l8.5-6L4 6v12zm9-12v12l8.5-6L13 6z"/></svg>
+                </button>
+            </div>
         </div>
     </div>
 
+    <audio id="audio-core" preload="none"></audio>
+
     <script>
-        // Глобальное состояние SPA
-        const state = {
-            token: localStorage.getItem('yd_token') || '',
-            currentView: 'auth-view',
-            selectedBook: '',
-            currentPlaylist: [],
-            currentTrackIndex: 0,
-            playbackSpeed: 1.0,
-            playingBookName: '',
-            playingTrack: null,
-            theme: localStorage.getItem('yd_theme') || 'dark'
+        const API_BASE = 'https://cloud-api.yandex.net/v1/disk/resources';
+        const ROOT_PATH = '01. Медиатека/Книги'; // Исправлен регистр пути "Книги" как в v11
+
+        let oauthToken = localStorage.getItem('ya_books_token') || '';
+        let currentBookPath = '';
+        let currentBookData = null;
+        let activeTrackIndex = -1;
+        let audioFilesList = [];
+        let currentTheme = localStorage.getItem('app_theme') || 'dark';
+        let playbackSpeed = 1.0;
+        let playingBookPath = '';
+
+        // Инициализация объекта кэша метаданных в памяти
+        let bookCache = JSON.parse(localStorage.getItem('ya_book_resources_cache')) || {};
+
+        const audioCore = document.getElementById('audio-core');
+
+        window.onload = function() {
+            setAppTheme(currentTheme);
+            if (!oauthToken) {
+                switchScreen('screen-auth');
+            } else {
+                switchScreen('screen-catalog');
+                loadCatalogRealtime();
+            }
+            initAudioListeners();
         };
 
-        // Единый фоновый аудиоплеер
-        const audioPlayer = new Audio();
-
-        // Инициализация при запуске
-        window.addEventListener('DOMContentLoaded', () => {
-            applyThemeUI();
-            if (state.token) {
-                switchView('main-view');
-                loadBookshelf();
-            } else {
-                switchView('auth-view');
-            }
-            initAudioEventListeners();
-        });
-
-        function switchView(viewId) {
-            document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
-            document.getElementById(viewId).classList.add('active');
-            state.currentView = viewId;
-            if (viewId === 'player-view') updatePlayerUI();
-        }
-
-        function showLoading(show) {
-            document.getElementById('global-loader').style.display = show ? 'block' : 'none';
-        }
-
-        // РАБОТА С API ЯНДЕКС ДИСКА
-        async function apiRequest(endpoint, params = {}) {
-            const url = new URL('https://cloud-api.yandex.net/v1/disk/' + endpoint);
-            Object.keys(params).forEach(key => url.searchParams.append(key, params[key]));
-            
-            const response = await fetch(url, {
-                headers: { 'Authorization': 'OAuth ' + state.token }
+        function switchScreen(screenId) {
+            ['screen-auth', 'screen-catalog', 'screen-settings', 'screen-book'].forEach(id => {
+                document.getElementById(id).classList.add('hidden');
             });
+            document.getElementById(screenId).classList.remove('hidden');
+        }
 
-            if (response.status === 401) {
-                alert('Ошибка авторизации. Проверьте ваш OAuth-токен.');
-                logout();
-                throw new Error('Unauthorized');
+        function setAppTheme(theme) {
+            currentTheme = theme;
+            localStorage.setItem('app_theme', theme);
+            const darkBtn = document.getElementById('theme-btn-dark');
+            const lightBtn = document.getElementById('theme-btn-light');
+
+            if(theme === 'dark') {
+                document.body.className = "min-h-screen flex flex-col max-w-md mx-auto relative shadow-2xl overflow-x-hidden theme-dark";
+                darkBtn.className = "py-2 rounded-lg text-xs font-bold bg-zinc-800 text-amber-500 border border-white/5 shadow-md";
+                lightBtn.className = "py-2 rounded-lg text-xs font-medium text-zinc-500 hover:text-zinc-300";
+            } else {
+                document.body.className = "min-h-screen flex flex-col max-w-md mx-auto relative shadow-2xl overflow-x-hidden theme-light";
+                lightBtn.className = "py-2 rounded-lg text-xs font-bold bg-white text-amber-600 border border-zinc-200/60 shadow-sm";
+                darkBtn.className = "py-2 rounded-lg text-xs font-medium text-zinc-400 hover:text-zinc-600";
             }
-            return response.json();
+            
+            // Если книга ePub открыта, обновляем ее стили под тему
+            if (window.currentRendition) {
+                applyEpubTheme();
+            }
+        }
+
+        function applyEpubTheme() {
+            if (!window.currentRendition) return;
+            if (currentTheme === 'dark') {
+                window.currentRendition.themes.register('custom', { 'body': { 'background': '#131316 !important', 'color': '#d1d5db !important' } });
+            } else {
+                window.currentRendition.themes.register('custom', { 'body': { 'background': '#f9fafb !important', 'color': '#111827 !important' } });
+            }
+            window.currentRendition.themes.select('custom');
         }
 
         function saveToken() {
-            const val = document.getElementById('token-input').value.trim();
-            if (val) {
-                state.token = val;
-                localStorage.setItem('yd_token', val);
-                switchView('main-view');
-                loadBookshelf();
+            const token = document.getElementById('input-token').value.trim();
+            if(token) {
+                oauthToken = token;
+                localStorage.setItem('ya_books_token', token);
+                switchScreen('screen-catalog');
+                loadCatalogRealtime();
             }
         }
 
         function logout() {
-            localStorage.removeItem('yd_token');
-            state.token = '';
-            switchView('auth-view');
+            localStorage.removeItem('ya_books_token');
+            oauthToken = '';
+            switchScreen('screen-auth');
+            document.getElementById('mini-player').classList.add('translate-y-[150%]');
+            audioCore.pause();
         }
 
-        // СТРАТЕГИЯ СМАРТ-КЭШИРОВАНИЯ
-        function getCache(key) {
-            const item = localStorage.getItem('book_cache_' + key);
-            return item ? JSON.parse(item) : null;
+        function clearBookCache() {
+            bookCache = {};
+            localStorage.removeItem('ya_book_resources_cache');
+            alert('Локальный кэш ресурсов полностью очищен.');
+            switchScreen('screen-catalog');
+            loadCatalogRealtime();
         }
 
-        function setCache(key, data) {
-            localStorage.setItem('book_cache_' + key, JSON.stringify(data));
+        async function fetchYandex(url) {
+            const response = await fetch(url, { headers: { 'Authorization': `OAuth ${oauthToken}` } });
+            if (response.status === 401) { alert('Сессия авторизации завершена.'); logout(); throw new Error('Unauthorized'); }
+            return response;
         }
 
-        function clearAppCache() {
-            Object.keys(localStorage).forEach(key => {
-                if (key.startsWith('book_cache_')) localStorage.removeItem(key);
-            });
-            alert('Кэш метаданных очищен.');
-            loadBookshelf();
+        async function getDownloadUrl(path) {
+            const url = `${API_BASE}/download?path=${encodeURIComponent(path)}`;
+            const res = await fetchYandex(url);
+            const data = await res.json();
+            return data.href;
         }
 
-        // ЗАГРУЗКА ДАННЫХ КАТАЛОГА (Книжная полка)
-        async function loadBookshelf() {
-            showLoading(true);
+        async function loadCatalogRealtime() {
+            document.getElementById('catalog-loading').classList.remove('hidden');
+            document.getElementById('catalog-empty').classList.add('hidden');
+            document.getElementById('books-grid').innerHTML = '';
+
             try {
-                // Список папок запрашивается всегда в реальном времени
-                const data = await apiRequest('resources', { path: '01. Медиатека/Книги', limit: 100 });
-                const folders = data._embedded?.items.filter(item => item.type === 'dir') || [];
+                const url = `${API_BASE}?path=${encodeURIComponent(ROOT_PATH)}&limit=100`;
+                const response = await fetchYandex(url);
                 
-                const grid = document.getElementById('books-grid');
-                grid.innerHTML = '';
-
-                for (const folder of folders) {
-                    const bookName = folder.name;
-                    const cachedMeta = getCache(bookName);
-
-                    const card = document.createElement('div');
-                    card.className = 'book-card';
-                    card.onclick = () => openBookDetails(bookName);
-
-                    // Генерация безопасного ID для динамического обновления DOM
-                    const safeId = "cover-" + btoa(unescape(encodeURIComponent(bookName))).replace(/=/g, '');
-
-                    card.innerHTML = `
-                        <div class="book-cover-wrapper" id="${safeId}">
-                            ${cachedMeta && cachedMeta.coverUrl ? `<img src="${cachedMeta.coverUrl}">` : `<div class="no-cover">📖</div>`}
-                        </div>
-                        <div class="book-title">${bookName}</div>
-                        <div class="book-author">${cachedMeta ? cachedMeta.author : 'Загрузка...'}</div>
-                    `;
-                    grid.appendChild(card);
-
-                    // Если тяжелых ресурсов нет в кэше — фоново подтягиваем их по сети один раз
-                    if (!cachedMeta) {
-                        fetchBookMetaInBackground(bookName, safeId);
-                    }
-                }
-            } catch (e) {
-                console.error('Ошибка рендеринга полки:', e);
-            } finally {
-                showLoading(false);
-            }
-        }
-
-        // ФОНОВЫЙ СБОР МЕТАДАННЫХ КОНКРЕТНОЙ КНИГИ
-        async function fetchBookMetaInBackground(bookName, elementId) {
-            try {
-                const res = await apiRequest('resources', { path: `01. Медиатека/Книги/${bookName}`, limit: 100 });
-                const items = res._embedded?.items || [];
-
-                let coverFile = items.find(i => i.name.toLowerCase() === 'cover.jpg' || i.name.toLowerCase() === 'cover.png');
-                let infoFile = items.find(i => i.name.toLowerCase() === 'info.json');
-                let epubFile = items.find(i => i.name.toLowerCase().endsWith('.epub'));
-
-                let coverUrl = '';
-                let author = 'Автор не указан';
-                let description = 'Описание отсутствует.';
-                let epubPath = epubFile ? epubFile.path : '';
-
-                if (coverFile) {
-                    const d = await apiRequest('resources/download', { path: coverFile.path });
-                    coverUrl = d.href;
-                }
-
-                if (infoFile) {
-                    const d = await apiRequest('resources/download', { path: infoFile.path });
-                    const infoRes = await fetch(d.href);
-                    const infoJson = await infoRes.json();
-                    author = infoJson.author || infoJson.Author || author;
-                    description = infoJson.description || infoJson.Description || description;
-                }
-
-                const metaToCache = { coverUrl, author, description, epubPath };
-                setCache(bookName, metaToCache);
-
-                // Бесшовное обновление элемента на главной витрине
-                const wrapper = document.getElementById(elementId);
-                if (wrapper) {
-                    if (coverUrl) wrapper.innerHTML = `<img src="${coverUrl}">`;
-                    wrapper.nextElementSibling.nextElementSibling.textContent = author;
-                }
-            } catch (e) {
-                console.error('Ошибка фонового сбора метаданных для ' + bookName, e);
-            }
-        }
-
-        // СТРАНИЦА КАРТОЧКИ КНИГИ
-        function openBookDetails(bookName) {
-            state.selectedBook = bookName;
-            const cachedMeta = getCache(bookName);
-
-            const blurBg = document.getElementById('detail-blur-bg');
-            const coverImg = document.getElementById('detail-cover-img');
-            const titleText = document.getElementById('detail-title-text');
-            const authorText = document.getElementById('detail-author-text');
-            const descText = document.getElementById('detail-desc-text');
-
-            titleText.textContent = bookName;
-
-            if (cachedMeta) {
-                blurBg.style.backgroundImage = `url('${cachedMeta.coverUrl}')`;
-                coverImg.src = cachedMeta.coverUrl;
-                authorText.textContent = cachedMeta.author;
-                descText.textContent = cachedMeta.description;
-            } else {
-                blurBg.style.backgroundImage = 'none';
-                coverImg.src = '';
-                authorText.textContent = 'Загрузка...';
-                descText.textContent = 'Подгружаем метаданные из сети...';
-            }
-
-            switchView('book-view');
-        }
-
-        // МАРШРУТИЗАЦИЯ НА ОДДЕЛЬНЫЙ ЭКРАН АУДИОПЛЕЕРА
-        async function routeToAudio() {
-            const bookName = state.selectedBook;
-            switchView('player-view');
-            document.getElementById('player-book-title').textContent = bookName;
-
-            const cachedMeta = getCache(bookName);
-            document.getElementById('player-cover-img').src = cachedMeta ? cachedMeta.coverUrl : '';
-
-            showLoading(true);
-            try {
-                // Аудиофайлы запрашиваются исключительно из строго заданной внутренней директории /Аудиокнига
-                const res = await apiRequest('resources', { path: `01. Медиатека/Книги/${bookName}/Аудиокнига`, limit: 100 });
-                let tracks = res._embedded?.items.filter(i => i.name.toLowerCase().endsWith('.mp3')) || [];
-                
-                // Сортировка глав по естественному алфавитно-цифровому порядку
-                tracks.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }));
-
-                if (tracks.length === 0) {
-                    alert('Файлы .mp3 в папке "Аудиокнига" не обнаружены.');
-                    switchView('book-view');
+                if (!response.ok) {
+                    document.getElementById('catalog-loading').classList.add('hidden');
+                    document.getElementById('catalog-empty').classList.remove('hidden');
                     return;
                 }
 
-                state.currentPlaylist = tracks;
+                const data = await response.json();
+                const folders = data._embedded?.items.filter(item => item.type === 'dir') || [];
 
-                // Переинициализируем плеер только если переключились на новую книгу
-                if (state.playingBookName !== bookName) {
-                    state.playingBookName = bookName;
-                    state.currentTrackIndex = 0;
-                    await loadTrack(0);
-                } else {
-                    updatePlayerUI();
+                if(folders.length === 0) {
+                    document.getElementById('catalog-loading').classList.add('hidden');
+                    document.getElementById('catalog-empty').classList.remove('hidden');
+                    return;
                 }
-            } catch (e) {
-                console.error(e);
-                alert('Не удалось подтянуть аудио-плейлист.');
-                switchView('book-view');
-            } finally {
-                showLoading(false);
+
+                for (const folder of folders) {
+                    renderBookCard(folder);
+                }
+                
+                document.getElementById('catalog-loading').classList.add('hidden');
+
+            } catch (err) {
+                console.error(err);
+                document.getElementById('catalog-loading').classList.add('hidden');
             }
         }
 
-        // ЛОГИКА ВОСПРОИЗВЕДЕНИЯ АУДИО
-        async function loadTrack(index) {
-            if (!state.currentPlaylist || !state.currentPlaylist[index]) return;
-            const track = state.currentPlaylist[index];
-            document.getElementById('player-track-title').textContent = track.name.replace('.mp3', '');
+        function renderBookCard(folder) {
+            const grid = document.getElementById('books-grid');
+            const card = document.createElement('div');
+            card.className = "group bg-zinc-500/5 border border-white/5 rounded-2xl p-3 flex flex-col cursor-pointer hover:bg-zinc-500/10 hover:border-amber-500/20 transition-all duration-300 active:scale-[0.97]";
             
-            showLoading(true);
-            try {
-                const d = await apiRequest('resources/download', { path: track.path });
-                audioPlayer.src = d.href; // Временная прямая сессионная ссылка
-                audioPlayer.playbackRate = state.playbackSpeed;
-                audioPlayer.play();
-                state.playingTrack = track;
-                document.getElementById('player-play-btn').textContent = '⏸';
-            } catch (e) {
-                console.error(e);
-                alert('Не удалось запустить аудиопоток.');
-            } finally {
-                showLoading(false);
+            // Безопасный ID для поиска элемента как в v11
+            const safeId = "cover-" + btoa(unescape(encodeURIComponent(folder.name))).replace(/=/g, '');
+            card.setAttribute('onclick', `openBook("${folder.path.replace(/"/g, '&quot;')}", "${folder.name.replace(/"/g, '&quot;')}")`);
+            
+            const cached = bookCache[folder.name];
+
+            card.innerHTML = `
+                <div class="aspect-[3/4] w-full rounded-xl bg-zinc-900 mb-3 overflow-hidden shadow-md relative">
+                    <img id="${safeId}" src="${cached && cached.cover ? cached.cover : ''}" class="w-full h-full object-cover ${cached && cached.cover ? 'opacity-100' : 'opacity-0'} transition-opacity duration-500">
+                    <div class="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent"></div>
+                </div>
+                <div class="text-[13px] font-bold truncate px-0.5 tracking-tight group-hover:text-amber-400 transition-colors">${folder.name}</div>
+                <div class="text-[11px] text-zinc-500 truncate px-0.5 mt-0.5">${cached && cached.author ? cached.author : 'Загрузка...'}</div>
+            `;
+            grid.appendChild(card);
+
+            // Если в кэше данных нет, собираем их в фоновом режиме (стратегия смарт-кэша из v11)
+            if (!cached) {
+                fetchBookMetaInBackground(folder.name, folder.path, safeId);
             }
         }
 
-        function initAudioEventListeners() {
-            audioPlayer.addEventListener('timeupdate', () => {
-                const slider = document.getElementById('player-slider');
-                const currentEl = document.getElementById('player-current-time');
-                const totalEl = document.getElementById('player-total-time');
+        async function fetchBookMetaInBackground(bookName, bookPath, elementId) {
+            try {
+                const url = `${API_BASE}?path=${encodeURIComponent(bookPath)}&limit=100`;
+                const res = await fetchYandex(url);
+                const data = await res.json();
+                const items = data._embedded?.items || [];
 
-                if (!isNaN(audioPlayer.duration)) {
-                    slider.max = Math.floor(audioPlayer.duration);
-                    slider.value = Math.floor(audioPlayer.currentTime);
-                    totalEl.textContent = formatTime(audioPlayer.duration);
+                let coverFile = items.find(i => i.name.toLowerCase().startsWith('cover.'));
+                let infoFile = items.find(i => i.name.toLowerCase() === 'info.json');
+                let epubFile = items.find(i => i.name.toLowerCase().endsWith('.epub'));
+                let txtFile = items.find(i => i.name.toLowerCase() === 'book.txt');
+
+                let coverUrl = '';
+                let author = 'Автор не указан';
+                let text = 'Описание отсутствует в источнике.';
+                let epubPath = epubFile ? epubFile.path : '';
+
+                if (coverFile) {
+                    coverUrl = await getDownloadUrl(coverFile.path);
                 }
-                currentEl.textContent = formatTime(audioPlayer.currentTime);
-            });
 
-            audioPlayer.addEventListener('ended', () => {
-                playNextTrack();
-            });
+                if (infoFile) {
+                    try {
+                        const dUrl = await getDownloadUrl(infoFile.path);
+                        const infoRes = await fetch(dUrl);
+                        const infoJson = await infoRes.json();
+                        author = infoJson.author || infoJson.Author || author;
+                        text = infoJson.description || infoJson.Description || infoJson.text || text;
+                    } catch(e) { console.error(e); }
+                }
+
+                if ((text === 'Описание отсутствует в источнике.') && txtFile) {
+                    try {
+                        const tUrl = await getDownloadUrl(txtFile.path);
+                        const txtRes = await fetch(tUrl);
+                        text = await txtRes.text();
+                    } catch(e) { console.error(e); }
+                }
+
+                bookCache[bookName] = { cover: coverUrl, author, text, epubPath };
+                localStorage.setItem('ya_book_resources_cache', JSON.stringify(bookCache));
+
+                // Бесшовное обновление UI карточки без перезагрузки витрины
+                const imgNode = document.getElementById(elementId);
+                if (imgNode) {
+                    if (coverUrl) {
+                        imgNode.src = coverUrl;
+                        imgNode.classList.remove('opacity-0');
+                    }
+                    imgNode.parentElement.nextElementSibling.nextElementSibling.textContent = author;
+                }
+            } catch (e) {
+                console.error('Ошибка фонового сбора метаданных:', e);
+            }
         }
 
-        function formatTime(secs) {
-            const m = Math.floor(secs / 60);
-            const s = Math.floor(secs % 60);
-            return `${m}:${s < 10 ? '0' : ''}${s}`;
-        }
+        async function openBook(path, name) {
+            currentBookPath = path;
+            
+            // Инициализация дефолтной структуры данных
+            currentBookData = bookCache[name] || { name: name, cover: '', text: 'Подгружаем метаданные из сети...', author: 'Загрузка...' };
+            currentBookData.name = name;
 
-        function togglePlay() {
-            if (!state.playingTrack) return;
-            if (audioPlayer.paused) {
-                audioPlayer.play();
-                document.getElementById('player-play-btn').textContent = '⏸';
+            switchScreen('screen-book');
+            document.getElementById('book-title').innerText = name;
+            document.getElementById('book-author').innerText = currentBookData.author || 'Автор не указан';
+            
+            const readerContent = document.getElementById('reader-content');
+            readerContent.innerHTML = currentBookData.text || '';
+            document.getElementById('epub-controls').classList.add('hidden');
+
+            if(currentBookData.cover) {
+                document.getElementById('book-cover').src = currentBookData.cover;
+                document.getElementById('book-blur-bg').style.backgroundImage = `url('${currentBookData.cover}')`;
             } else {
-                audioPlayer.pause();
-                document.getElementById('player-play-btn').textContent = '▶';
+                document.getElementById('book-cover').src = '';
+                document.getElementById('book-blur-bg').style.backgroundImage = 'none';
             }
-        }
+            
+            document.getElementById('tracks-list').innerHTML = '';
+            switchBookMode('read');
 
-        function seekAudio(value) {
-            audioPlayer.currentTime = value;
-        }
-
-        function rewindAudio(seconds) {
-            audioPlayer.currentTime += seconds;
-        }
-
-        function playNextTrack() {
-            if (state.currentPlaylist && state.currentTrackIndex < state.currentPlaylist.length - 1) {
-                state.currentTrackIndex++;
-                loadTrack(state.currentTrackIndex);
-            }
-        }
-
-        function playPreviousTrack() {
-            if (state.currentPlaylist && state.currentTrackIndex > 0) {
-                state.currentTrackIndex--;
-                loadTrack(state.currentTrackIndex);
-            }
-        }
-
-        function cyclePlaybackSpeed() {
-            const speeds = [1.0, 1.25, 1.5, 1.75, 2.0];
-            let idx = speeds.indexOf(state.playbackSpeed);
-            idx = (idx + 1) % speeds.length;
-            state.playbackSpeed = speeds[idx];
-            audioPlayer.playbackRate = state.playbackSpeed;
-            document.getElementById('player-speed-btn').textContent = state.playbackSpeed + 'x';
-        }
-
-        function updatePlayerUI() {
-            if (state.playingTrack && state.playingBookName === state.selectedBook) {
-                document.getElementById('player-track-title').textContent = state.playingTrack.name.replace('.mp3', '');
-                document.getElementById('player-play-btn').textContent = audioPlayer.paused ? '▶' : '⏸';
-                document.getElementById('player-speed-btn').textContent = state.playbackSpeed + 'x';
+            // Интегрированный парсинг ePub из v11, если файл доступен
+            if (currentBookData.epubPath) {
+                loadEpubBook(currentBookData.epubPath);
             } else {
-                document.getElementById('player-track-title').textContent = 'Нажмите Play для воспроизведения';
-                document.getElementById('player-play-btn').textContent = '▶';
+                // Если в кэше нет ссылки на epub, проверяем директорию повторно
+                try {
+                    const url = `${API_BASE}?path=${encodeURIComponent(path)}&limit=100`;
+                    const res = await fetchYandex(url);
+                    const data = await res.json();
+                    const items = data._embedded?.items || [];
+                    let epubFile = items.find(i => i.name.toLowerCase().endsWith('.epub'));
+                    if (epubFile) {
+                        bookCache[name].epubPath = epubFile.path;
+                        localStorage.setItem('ya_book_resources_cache', JSON.stringify(bookCache));
+                        loadEpubBook(epubFile.path);
+                    }
+                } catch(e) { console.error(e); }
             }
-        }
 
-        // МАРШРУТИЗАЦИЯ НА ОТДЕЛЬНЫЙ ЭКРАН ЧИТАЛКИ (ePub.js)
-        async function routeToReader() {
-            const bookName = state.selectedBook;
-            const cachedMeta = getCache(bookName);
-
-            if (!cachedMeta || !cachedMeta.epubPath) {
-                alert('В корневом каталоге книги файл формата .epub не найден.');
-                return;
-            }
-
-            switchView('reader-view');
-            document.getElementById('reader-book-title').textContent = bookName;
-            document.getElementById('reader-container').innerHTML = '';
-
-            showLoading(true);
+            // Загрузка аудиокниги исключительно из подпапки /Аудиокнига согласно требованиям v11
             try {
-                const d = await apiRequest('resources/download', { path: cachedMeta.epubPath });
-                const blobRes = await fetch(d.href);
-                const epubBlob = await blobRes.blob(); // Скачивание книги бинарным Blob-объектом
+                const audioPath = `${path}/Аудиокнига`;
+                const url = `${API_BASE}?path=${encodeURIComponent(audioPath)}&limit=100`;
+                const res = await fetchYandex(url);
+                
+                if (res.ok) {
+                    const data = await res.json();
+                    const items = data._embedded?.items || [];
+                    audioFilesList = items
+                        .filter(i => i.name.toLowerCase().endsWith('.mp3'))
+                        .sort((a, b) => a.name.localeCompare(b.name, undefined, {numeric: true, sensitivity: 'base'}));
+                } else {
+                    audioFilesList = [];
+                }
+                renderTracksList();
+            } catch (err) {
+                console.error('Аудиокнига не найдена в этой папке:', err);
+                audioFilesList = [];
+                renderTracksList();
+            }
+        }
+
+        // Загрузка и рендеринг ePub книги с помощью ePub.js
+        async function loadEpubBook(epubPath) {
+            const readerContent = document.getElementById('reader-content');
+            readerContent.innerHTML = '<div class="text-xs text-zinc-400 italic p-4 text-center">Загрузка электронной книги ePub...</div>';
+            
+            try {
+                const dUrl = await getDownloadUrl(epubPath);
+                const blobRes = await fetch(dUrl);
+                const epubBlob = await blobRes.blob();
 
                 if (window.currentEpubBook) {
                     window.currentEpubBook.destroy();
                 }
 
-                // Инициализация библиотеки ePub.js
+                readerContent.innerHTML = '<div id="epub-render-layer" class="w-full h-[260px]"></div>';
+                
                 const book = ePub(epubBlob);
                 window.currentEpubBook = book;
                 
-                const rendition = book.renderTo("reader-container", {
+                const rendition = book.renderTo("epub-render-layer", {
                     width: "100%",
                     height: "100%",
                     spread: "none"
                 });
                 window.currentRendition = rendition;
                 
-                // Кастомизация темы отображения текста под выбранную системную тему приложения
-                if (state.theme === 'dark') {
-                    rendition.themes.register('custom', { 'body': { 'background': '#17171C !important', 'color': '#FFFFFF !important' } });
-                } else {
-                    rendition.themes.register('custom', { 'body': { 'background': '#FFFFFF !important', 'color': '#1C1C1E !important' } });
-                }
-                
+                applyEpubTheme();
                 rendition.display();
-                rendition.themes.select('custom');
 
-            } catch (e) {
-                console.error(e);
-                alert('Критическая ошибка парсинга ePub-файла.');
-                switchView('book-view');
-            } finally {
-                showLoading(false);
+                document.getElementById('epub-controls').classList.remove('hidden');
+            } catch(e) {
+                console.error('Ошибка ePub.js:', e);
+                readerContent.innerText = currentBookData.text || 'Не удалось загрузить ePub файл.';
+                document.getElementById('epub-controls').classList.add('hidden');
             }
         }
 
-        // СМЕНА СТИЛИСТИЧЕСКИХ ТЕМИНГОВ (Светлая/Темная)
-        function toggleTheme() {
-            state.theme = document.getElementById('theme-toggle').checked ? 'dark' : 'light';
-            localStorage.setItem('yd_theme', state.theme);
-            applyThemeUI();
+        function switchBookMode(mode) {
+            const tabRead = document.getElementById('tab-read');
+            const tabListen = document.getElementById('tab-listen');
+            const areaReader = document.getElementById('mode-reader');
+            const areaPlayer = document.getElementById('mode-player');
+
+            if (mode === 'read') {
+                tabRead.className = "flex-1 py-1.5 rounded-full text-xs font-bold bg-amber-500 text-zinc-950 shadow-md transition-all";
+                tabListen.className = "flex-1 py-1.5 rounded-full text-xs font-semibold text-zinc-400 hover:text-zinc-200 transition-all";
+                areaReader.classList.remove('hidden');
+                areaPlayer.classList.add('hidden');
+            } else {
+                tabListen.className = "flex-1 py-1.5 rounded-full text-xs font-bold bg-amber-500 text-zinc-950 shadow-md transition-all";
+                tabRead.className = "flex-1 py-1.5 rounded-full text-xs font-semibold text-zinc-400 hover:text-zinc-200 transition-all";
+                areaPlayer.classList.remove('hidden');
+                areaReader.classList.add('hidden');
+            }
         }
 
-        function applyThemeUI() {
-            document.body.setAttribute('data-theme', state.theme);
-            const toggle = document.getElementById('theme-toggle');
-            if (toggle) toggle.checked = (state.theme === 'dark');
+        function renderTracksList() {
+            const container = document.getElementById('tracks-list');
+            container.innerHTML = '';
+
+            if (audioFilesList.length === 0) {
+                container.innerHTML = `<div class="text-xs text-zinc-500 italic p-4 text-center">Папка "Аудиокнига" пуста или отсутствует.</div>`;
+                return;
+            }
+
+            audioFilesList.forEach((file, index) => {
+                const cleanName = file.name.replace(/\.[^/.]+$/, "");
+                const isCurrentPlaying = activeTrackIndex === index && playingBookPath === currentBookPath;
+                
+                const row = document.createElement('button');
+                row.className = `w-full text-left px-4 py-3 rounded-xl text-xs flex items-center justify-between transition-all duration-200 active:scale-[0.98] border ${isCurrentPlaying ? 'bg-amber-500/10 text-amber-400 font-extrabold border-amber-500/30' : 'bg-white/5 text-zinc-300 hover:bg-white/10 border-transparent'}`;
+                row.innerHTML = `
+                    <div class="flex items-center space-x-3.5 truncate">
+                        <span class="${isCurrentPlaying ? 'text-amber-400' : 'text-zinc-500'} font-mono text-[10px] w-4">${index + 1}</span>
+                        <span class="truncate tracking-tight">${cleanName}</span>
+                    </div>
+                    <span class="text-[10px] text-zinc-500 font-mono pl-2 flex-shrink-0">${(file.size / (1024*1024)).toFixed(1)} MB</span>
+                `;
+                row.onclick = () => playTrack(index);
+                container.appendChild(row);
+            });
+        }
+
+        async function playTrack(index) {
+            // Если включили трек из совершенно другой книги, сбрасываем состояние индекса
+            if (playingBookPath !== currentBookPath) {
+                playingBookPath = currentBookPath;
+            }
+
+            activeTrackIndex = index;
+            const targetFile = audioFilesList[index];
+            renderTracksList();
+
+            try {
+                const currentTrackUrl = await getDownloadUrl(targetFile.path);
+                audioCore.src = currentTrackUrl;
+                audioCore.playbackRate = playbackSpeed; // Применяем установленную скорость
+                audioCore.play();
+
+                document.getElementById('mini-player').classList.remove('translate-y-[150%]');
+                document.getElementById('mini-player-title').innerText = targetFile.name.replace(/\.[^/.]+$/, "");
+                document.getElementById('mini-player-book').innerText = currentBookData.name;
+                document.getElementById('mini-player-cover').src = currentBookData.cover || 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" fill="%2318181b"></svg>';
+                
+                updatePlayIcon(true);
+            } catch (e) {
+                console.error(e);
+                alert('Не удалось запустить аудиопоток.');
+            }
+        }
+
+        // Циклическое изменение темпа речи из плеера v11
+        function cyclePlaybackSpeed() {
+            const speeds = [1.0, 1.25, 1.5, 1.75, 2.0];
+            let idx = speeds.indexOf(playbackSpeed);
+            idx = (idx + 1) % speeds.length;
+            playbackSpeed = speeds[idx];
+            audioCore.playbackRate = playbackSpeed;
+            document.getElementById('player-speed-btn').textContent = playbackSpeed + 'x';
+        }
+
+        function togglePlay() {
+            if (!audioCore.src && audioFilesList.length > 0) { 
+                playTrack(0); 
+                return;
+            }
+            if (audioCore.paused) {
+                audioCore.play(); 
+                updatePlayIcon(true); 
+            } else { 
+                audioCore.pause(); 
+                updatePlayIcon(false); 
+            }
+        }
+
+        function updatePlayIcon(isPlaying) {
+            const icon = document.getElementById('svg-play-icon');
+            icon.innerHTML = isPlaying ? `<path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>` : `<path d="M8 5v14l11-7z"/>`;
+        }
+
+        function seekRelative(seconds) {
+            audioCore.currentTime = Math.max(0, Math.min(audioCore.duration || 0, audioCore.currentTime + seconds));
+        }
+
+        function formatTime(secs) {
+            if (isNaN(secs)) return "00:00";
+            const m = Math.floor(secs / 60).toString().padStart(2, '0');
+            const s = Math.floor(secs % 60).toString().padStart(2, '0');
+            return `${m}:${s}`;
+        }
+
+        function initAudioListeners() {
+            const progress = document.getElementById('player-progress');
+            audioCore.addEventListener('timeupdate', () => {
+                if (!isNaN(audioCore.duration)) {
+                    progress.value = (audioCore.currentTime / audioCore.duration) * 100;
+                    document.getElementById('time-current').innerText = formatTime(audioCore.currentTime);
+                }
+            });
+            audioCore.addEventListener('loadedmetadata', () => {
+                document.getElementById('time-total').innerText = formatTime(audioCore.duration);
+            });
+            progress.addEventListener('input', () => {
+                if (!isNaN(audioCore.duration)) { audioCore.currentTime = (progress.value / 100) * audioCore.duration; }
+            });
+            audioCore.addEventListener('ended', () => {
+                if (activeTrackIndex + 1 < audioFilesList.length) { playTrack(activeTrackIndex + 1); } else { updatePlayIcon(false); }
+            });
         }
     </script>
 </body>
