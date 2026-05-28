@@ -1,0 +1,776 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Яндекс.Книги PWA Клон</title>
+    
+    <!-- PWA Meta Tags -->
+    <meta name="theme-color" content="#1e1e24">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="manifest" href="manifest.json">
+    
+    <!-- Стили через CSS Variables (Тема похожа на Яндекс Книги/Букмейт - темная, минималистичная) -->
+    <style>
+        :root {
+            --bg-color: #121214;
+            --surface-color: #1e1e24;
+            --accent-color: #ffcc00; /* Фирменный желтый Яндекс */
+            --text-main: #ffffff;
+            --text-muted: #a0a0ab;
+            --border-color: #2a2a32;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            display: block;
+            min-height: 100vh;
+        }
+
+        header {
+            background-color: var(--surface-color);
+            padding: 16px;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        header h1 {
+            font-size: 18px;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+        }
+
+        .btn-settings {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            font-size: 20px;
+        }
+
+        main {
+            padding: 16px;
+            padding-bottom: 140px; /* Отступ для плеера внизу */
+        }
+
+        /* Экраны */
+        .screen {
+            display: none;
+        }
+
+        .screen.active {
+            display: block;
+        }
+
+        /* Настройки / Токен */
+        .auth-card {
+            background-color: var(--surface-color);
+            padding: 20px;
+            border-radius: 16px;
+            margin-bottom: 20px;
+            border: 1px solid var(--border-color);
+        }
+
+        .auth-card h3 {
+            margin-bottom: 12px;
+            font-size: 16px;
+        }
+
+        .input-group {
+            display: flex;
+            gap: 8px;
+            margin-top: 10px;
+        }
+
+        input[type="text"] {
+            flex: 1;
+            background-color: var(--bg-color);
+            border: 1px solid var(--border-color);
+            color: white;
+            padding: 12px;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+
+        button.btn {
+            background-color: var(--accent-color);
+            color: #000;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        button.btn-secondary {
+            background-color: transparent;
+            color: var(--text-muted);
+            border: 1px solid var(--border-color);
+        }
+
+        /* Витрина Книг */
+        .books-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+            gap: 16px;
+            margin-top: 16px;
+        }
+
+        .book-card {
+            background-color: var(--surface-color);
+            border-radius: 12px;
+            overflow: hidden;
+            cursor: pointer;
+            border: 1px solid var(--border-color);
+            transition: transform 0.2s;
+        }
+
+        .book-card:active {
+            transform: scale(0.98);
+        }
+
+        .cover-wrapper {
+            position: relative;
+            width: 100%;
+            padding-top: 130%; /* Пропорция обложки книги */
+            background-color: #25252d;
+        }
+
+        .cover-img {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .cover-placeholder {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 10px;
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+
+        .book-info {
+            padding: 10px;
+        }
+
+        .book-title {
+            font-size: 14px;
+            font-weight: 600;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            margin-bottom: 2px;
+        }
+
+        .book-author {
+            font-size: 12px;
+            color: var(--text-muted);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        /* Страница книги */
+        .back-nav {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--accent-color);
+            cursor: pointer;
+            margin-bottom: 16px;
+            font-weight: 500;
+        }
+
+        .book-detail-header {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            margin-bottom: 24px;
+        }
+
+        .detail-cover {
+            width: 180px;
+            height: 240px;
+            border-radius: 12px;
+            object-fit: cover;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+            margin-bottom: 16px;
+            background-color: var(--surface-color);
+        }
+
+        .detail-title {
+            font-size: 20px;
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+
+        .detail-author {
+            font-size: 15px;
+            color: var(--accent-color);
+            margin-bottom: 12px;
+        }
+
+        .detail-desc {
+            font-size: 14px;
+            color: var(--text-muted);
+            line-height: 1.5;
+            text-align: left;
+            background-color: var(--surface-color);
+            padding: 14px;
+            border-radius: 12px;
+            width: 100%;
+        }
+
+        .tracks-list {
+            margin-top: 20px;
+        }
+
+        .tracks-list h4 {
+            margin-bottom: 10px;
+            font-size: 16px;
+            color: var(--text-muted);
+        }
+
+        .track-item {
+            background-color: var(--surface-color);
+            padding: 14px;
+            border-radius: 8px;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            cursor: pointer;
+            border: 1px solid transparent;
+        }
+
+        .track-item.active {
+            border-color: var(--accent-color);
+            color: var(--accent-color);
+        }
+
+        .track-name {
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        /* Нижний фиксированный плеер */
+        .mini-player {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background-color: var(--surface-color);
+            border-top: 1px solid var(--border-color);
+            padding: 12px 16px;
+            box-shadow: 0 -4px 20px rgba(0,0,0,0.4);
+            display: none;
+            z-index: 100;
+        }
+
+        .mini-player.active {
+            display: block;
+        }
+
+        .player-upper {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 8px;
+        }
+
+        .player-meta {
+            flex: 1;
+            min-width: 0;
+            padding-right: 12px;
+        }
+
+        .player-title {
+            font-size: 14px;
+            font-weight: 600;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .player-track-name {
+            font-size: 12px;
+            color: var(--text-muted);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .player-controls {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .btn-play {
+            background-color: var(--accent-color);
+            color: black;
+            border: none;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        .player-lower {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .time-label {
+            font-size: 11px;
+            color: var(--text-muted);
+            min-width: 35px;
+        }
+
+        .progress-bar-container {
+            flex: 1;
+            height: 4px;
+            background-color: var(--border-color);
+            border-radius: 2px;
+            position: relative;
+            cursor: pointer;
+        }
+
+        .progress-bar {
+            height: 100%;
+            background-color: var(--accent-color);
+            width: 0%;
+            border-radius: 2px;
+        }
+
+        /* Индикатор загрузки */
+        .loader {
+            text-align: center;
+            padding: 30px;
+            color: var(--text-muted);
+            display: none;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1 id="app-title">Яндекс.Книги на Диске</h1>
+        <button class="btn-settings" id="btn-toggle-settings">⚙️</button>
+    </header>
+
+    <main>
+        <!-- Секция авторизации / настроек -->
+        <div id="settings-block" class="auth-card">
+            <h3>Настройка Яндекс.Диска</h3>
+            <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 10px;">
+                Введите Ваш OAuth-токен Яндекс Диска. Приложение работает напрямую с вашей папкой `Audiobooks/` в корне Диска.
+            </p>
+            <div class="input-group">
+                <input type="text" id="oauth-token" placeholder="Вставьте OAuth токен">
+                <button class="btn" id="btn-save-token">Сохранить</button>
+            </div>
+            <p style="font-size: 11px; margin-top: 8px; color: var(--accent-color);">
+                <a href="https://oauth.yandex.ru/" target="_blank" style="color: inherit;">Получить токен на Яндекс ID</a>
+            </p>
+        </div>
+
+        <div id="loader" class="loader">Загрузка данных из облака...</div>
+
+        <!-- ЭКРАН 1: Список Книг (Витрина) -->
+        <div id="screen-catalog" class="screen active">
+            <h2>Моя полка</h2>
+            <div class="books-grid" id="books-container">
+                <!-- Сюда динамически рендерятся книги -->
+            </div>
+        </div>
+
+        <!-- ЭКРАН 2: Детализация книги -->
+        <div id="screen-book-details" class="screen">
+            <div class="back-nav" id="btn-back-to-catalog">← Назад на полку</div>
+            <div class="book-detail-header">
+                <img id="detail-cover-img" class="detail-cover" src="" alt="Обложка">
+                <div id="detail-title" class="detail-title">Название книги</div>
+                <div id="detail-author" class="detail-author">Автор</div>
+                <div id="detail-description" class="detail-desc">Описание отсутствует...</div>
+            </div>
+            
+            <div class="tracks-list">
+                <h4>Список глав</h4>
+                <div id="tracks-container">
+                    <!-- Список аудиофайлов -->
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Фиксированный Аудиоплеер -->
+    <div class="mini-player" id="audio-player-ui">
+        <div class="player-upper">
+            <div class="player-meta">
+                <div class="player-title" id="player-book-title">Название книги</div>
+                <div class="player-track-name" id="player-track-title">Глава 1</div>
+            </div>
+            <div class="player-controls">
+                <button id="btn-player-rw" style="background:none; border:none; color:white; font-size:18px; cursor:pointer;">⏪ 15с</button>
+                <button class="btn-play" id="btn-player-toggle">▶</button>
+                <button id="btn-player-ff" style="background:none; border:none; color:white; font-size:18px; cursor:pointer;">15с ⏩</button>
+            </div>
+        </div>
+        <div class="player-lower">
+            <span class="time-label" id="time-current">00:00</span>
+            <div class="progress-bar-container" id="progress-container">
+                <div class="progress-bar" id="player-progress"></div>
+            </div>
+            <span class="time-label" id="time-duration">00:00</span>
+        </div>
+    </div>
+
+    <!-- Скрытый нативный элемент аудио -->
+    <audio id="native-audio" preload="auto"></audio>
+
+    <!-- Логика работы приложения -->
+    <script>
+        const API_URL = 'https://cloud-api.yandex.net/v1/disk/resources';
+        let token = localStorage.getItem('yd_audiobooks_token') || '';
+        
+        // Внутреннее состояние приложения
+        let state = {
+            books: [],
+            currentBook: null,
+            currentTrackIndex: -1,
+            isPlaying: false
+        };
+
+        // DOM элементы
+        const elTokenInput = document.getElementById('oauth-token');
+        const elSaveTokenBtn = document.getElementById('btn-save-token');
+        const elSettingsBlock = document.getElementById('settings-block');
+        const elToggleSettingsBtn = document.getElementById('btn-toggle-settings');
+        const elLoader = document.getElementById('loader');
+        
+        const elCatalogScreen = document.getElementById('screen-catalog');
+        const elDetailsScreen = document.getElementById('screen-book-details');
+        const elBooksContainer = document.getElementById('books-container');
+        
+        const elBackBtn = document.getElementById('btn-back-to-catalog');
+        const elDetailCover = document.getElementById('detail-cover-img');
+        const elDetailTitle = document.getElementById('detail-title');
+        const elDetailAuthor = document.getElementById('detail-author');
+        const elDetailDesc = document.getElementById('detail-description');
+        const elTracksContainer = document.getElementById('tracks-container');
+
+        // Плеер элементы
+        const elPlayerUI = document.getElementById('audio-player-ui');
+        const elNativeAudio = document.getElementById('native-audio');
+        const elPlayerToggleBtn = document.getElementById('btn-player-toggle');
+        const elPlayerBookTitle = document.getElementById('player-book-title');
+        const elPlayerTrackTitle = document.getElementById('player-track-title');
+        const elTimeCurrent = document.getElementById('time-current');
+        const elTimeDuration = document.getElementById('time-duration');
+        const elProgressContainer = document.getElementById('progress-container');
+        const elProgressBar = document.getElementById('player-progress');
+        const elPlayerRw = document.getElementById('btn-player-rw');
+        const elPlayerFf = document.getElementById('btn-player-ff');
+
+        // Инициализация
+        if (token) {
+            elTokenInput.value = token;
+            elSettingsBlock.style.display = 'none'; // прячем если токен есть
+            loadCatalog();
+        }
+
+        elSaveTokenBtn.addEventListener('click', () => {
+            token = elTokenInput.value.trim();
+            if (token) {
+                localStorage.setItem('yd_audiobooks_token', token);
+                elSettingsBlock.style.display = 'none';
+                loadCatalog();
+            }
+        });
+
+        elToggleSettingsBtn.addEventListener('click', () => {
+            elSettingsBlock.style.display = elSettingsBlock.style.display === 'none' ? 'block' : 'none';
+        });
+
+        elBackBtn.addEventListener('click', () => {
+            elDetailsScreen.classList.remove('active');
+            elCatalogScreen.classList.add('active');
+        });
+
+        // Загрузка каталога с Яндекс Диска
+        async function loadCatalog() {
+            if (!token) return;
+            showLoader(true);
+            try {
+                // Получаем папки из корня директории Audiobooks
+                const res = await fetch(`${API_URL}?path=Audiobooks&limit=100`, {
+                    headers: { 'Authorization': `OAuth ${token}` }
+                });
+                
+                if (!res.ok) throw new Error('Ошибка доступа. Проверьте валидность Токена.');
+                
+                const data = await res.json();
+                const folders = data._embedded.items.filter(item => item.type === 'dir');
+                
+                state.books = [];
+                
+                // Проходим по каждой папке и ищем info.json
+                for (let folder of folders) {
+                    let bookData = {
+                        name: folder.name,
+                        path: folder.path,
+                        title: folder.name,
+                        author: 'Неизвестный автор',
+                        description: 'У этой книги нет описания в info.json',
+                        coverUrl: '',
+                        tracks: []
+                    };
+
+                    try {
+                        // Читаем содержимое папки книги
+                        const folderRes = await fetch(`${API_URL}?path=${encodeURIComponent(folder.path)}&limit=100`, {
+                            headers: { 'Authorization': `OAuth ${token}` }
+                        });
+                        const folderData = await folderRes.json();
+                        const files = folderData._embedded.items;
+
+                        // Ищем файлы контента
+                        const infoFile = files.find(f => f.name.toLowerCase() === 'info.json');
+                        const coverFile = files.find(f => f.name.toLowerCase() === 'cover.jpg' || f.name.toLowerCase() === 'cover.png');
+                        
+                        // Собираем все mp3 файлы
+                        bookData.tracks = files
+                            .filter(f => f.name.toLowerCase().endsWith('.mp3'))
+                            .sort((a, b) => a.name.localeCompare(b.name))
+                            .map(f => ({ name: f.name.replace('.mp3', ''), path: f.path }));
+
+                        // Если есть файл метаданных info.json, загружаем его контент
+                        if (infoFile) {
+                            const downloadRes = await fetch(`${API_URL}/download?path=${encodeURIComponent(infoFile.path)}`, {
+                                headers: { 'Authorization': `OAuth ${token}` }
+                            });
+                            const downloadData = await downloadRes.json();
+                            const metaRes = await fetch(downloadData.href);
+                            const meta = await metaRes.json();
+                            
+                            if (meta.title) bookData.title = meta.title;
+                            if (meta.author) bookData.author = meta.author;
+                            if (meta.description) bookData.description = meta.description;
+                        }
+
+                        // Получаем временную прямую ссылку на обложку
+                        if (coverFile) {
+                            const coverLinkRes = await fetch(`${API_URL}/download?path=${encodeURIComponent(coverFile.path)}`, {
+                                headers: { 'Authorization': `OAuth ${token}` }
+                            });
+                            const coverLinkData = await coverLinkRes.json();
+                            bookData.coverUrl = coverLinkData.href;
+                        }
+                    } catch (e) {
+                        console.error('Ошибка парсинга папки книги:', folder.name, e);
+                    }
+
+                    state.books.push(bookData);
+                }
+
+                renderCatalog();
+            } catch (err) {
+                alert(err.message);
+                elSettingsBlock.style.display = 'block';
+            } finally {
+                showLoader(false);
+            }
+        }
+
+        function showLoader(show) {
+            elLoader.style.display = show ? 'block' : 'none';
+        }
+
+        // Отрисовка каталога на полке
+        function renderCatalog() {
+            elBooksContainer.innerHTML = '';
+            if (state.books.length === 0) {
+                elBooksContainer.innerHTML = '<p style="color: var(--text-muted);">Папка Audiobooks пуста или не создана.</p>';
+                return;
+            }
+
+            state.books.forEach((book, index) => {
+                const card = document.createElement('div');
+                card.className = 'book-card';
+                card.innerHTML = `
+                    <div class="cover-wrapper">
+                        ${book.coverUrl ? `<img class="cover-img" src="${book.coverUrl}" alt="Обложка">` : `<div class="cover-placeholder">📖<br>${book.title}</div>`}
+                    </div>
+                    <div class="book-info">
+                        <div class="book-title">${book.title}</div>
+                        <div class="book-author">${book.author}</div>
+                    </div>
+                `;
+                card.addEventListener('click', () => openBookDetails(index));
+                elBooksContainer.appendChild(card);
+            });
+        }
+
+        // Открытие карточки книги
+        function openBookDetails(index) {
+            const book = state.books[index];
+            state.currentBook = book;
+
+            elDetailTitle.innerText = book.title;
+            elDetailAuthor.innerText = book.author;
+            elDetailDesc.innerText = book.description;
+            
+            if (book.coverUrl) {
+                elDetailCover.src = book.coverUrl;
+                elDetailCover.style.display = 'block';
+            } else {
+                elDetailCover.style.display = 'none';
+            }
+
+            // Рендер списка глав
+            elTracksContainer.innerHTML = '';
+            book.tracks.forEach((track, tIndex) => {
+                const item = document.createElement('div');
+                item.className = 'track-item';
+                if (state.currentBook === book && state.currentTrackIndex === tIndex) {
+                    item.classList.add('active');
+                }
+                item.innerHTML = `
+                    <span class="track-name">${tIndex + 1}. ${track.name}</span>
+                    <span>🎧</span>
+                `;
+                item.addEventListener('click', () => playTrack(tIndex));
+                elTracksContainer.appendChild(item);
+            });
+
+            elCatalogScreen.classList.remove('active');
+            elDetailsScreen.classList.add('active');
+        }
+
+        // Воспроизведение конкретного трека
+        async function playTrack(trackIndex) {
+            state.currentTrackIndex = trackIndex;
+            const track = state.currentBook.tracks[trackIndex];
+
+            elPlayerBookTitle.innerText = state.currentBook.title;
+            elPlayerTrackTitle.innerText = track.name;
+            elPlayerUI.classList.add('active');
+
+            // Подсвечиваем активный трек в списке
+            document.querySelectorAll('.track-item').forEach((el, idx) => {
+                if (idx === trackIndex) el.classList.add('active');
+                else el.classList.remove('active');
+            });
+
+            try {
+                // Запрашиваем свежую прямую ссылку на mp3 файл
+                const res = await fetch(`${API_URL}/download?path=${encodeURIComponent(track.path)}`, {
+                    headers: { 'Authorization': `OAuth ${token}` }
+                });
+                const data = await res.json();
+                
+                elNativeAudio.src = data.href;
+                elNativeAudio.play();
+                state.isPlaying = true;
+                elPlayerToggleBtn.innerText = '⏸';
+            } catch (err) {
+                alert('Не удалось запустить аудиофайл.');
+            }
+        }
+
+        // Логика управления плеером
+        elPlayerToggleBtn.addEventListener('click', () => {
+            if (!elNativeAudio.src) return;
+            if (state.isPlaying) {
+                elNativeAudio.pause();
+                state.isPlaying = false;
+                elPlayerToggleBtn.innerText = '▶';
+            } else {
+                elNativeAudio.play();
+                state.isPlaying = true;
+                elPlayerToggleBtn.innerText = '⏸';
+            }
+        });
+
+        // Тайминги и прогресс-бар
+        elNativeAudio.addEventListener('timeupdate', () => {
+            const current = elNativeAudio.currentTime;
+            const duration = elNativeAudio.duration || 0;
+            
+            elTimeCurrent.innerText = formatTime(current);
+            elTimeDuration.innerText = formatTime(duration);
+            
+            if (duration > 0) {
+                const percentage = (current / duration) * 100;
+                elProgressBar.style.width = `${percentage}%`;
+            }
+        });
+
+        // Автопереключение на следующий трек по завершении текущего
+        elNativeAudio.addEventListener('ended', () => {
+            if (state.currentBook && state.currentTrackIndex + 1 < state.currentBook.tracks.length) {
+                playTrack(state.currentTrackIndex + 1);
+            } else {
+                state.isPlaying = false;
+                elPlayerToggleBtn.innerText = '▶';
+            }
+        });
+
+        // Перемотка назад/вперед на 15 секунд
+        elPlayerRw.addEventListener('click', () => { elNativeAudio.currentTime = Math.max(0, elNativeAudio.currentTime - 15); });
+        elPlayerFf.addEventListener('click', () => { elNativeAudio.currentTime = Math.min(elNativeAudio.duration || 0, elNativeAudio.currentTime + 15); });
+
+        // Нажатие на прогресс-бар для изменения позиции трека
+        elProgressContainer.addEventListener('click', (e) => {
+            const rect = elProgressContainer.getBoundingClientRect();
+            const clickX = e.clientX - rect.left;
+            const width = rect.width;
+            const duration = elNativeAudio.duration || 0;
+            if (duration > 0) {
+                elNativeAudio.currentTime = (clickX / width) * duration;
+            }
+        });
+
+        function formatTime(secs) {
+            const m = Math.floor(secs / 60);
+            const s = Math.floor(secs % 60);
+            return `${m < 10 ? '0' : ''}${m}:${s < 10 ? '0' : ''}${s}`;
+        }
+    </script>
+</body>
+</html>
